@@ -55,29 +55,17 @@ public:
    * \brief BlueQueueDisc Destructor
    */
   virtual ~BlueQueueDisc ();
-
-  /**
-   * \brief Stats
-   */
-  typedef struct
+  
+    enum
   {
-    uint32_t unforcedDrop;      //!< Early probability drops: proactive
-    uint32_t forcedDrop;        //!< Drops due to queue limit: reactive
-  } Stats;
+    DTYPE_NONE,        //!< Ok, no drop
+    DTYPE_FORCED,      //!< A "forced" drop
+    DTYPE_UNFORCED,    //!< An "unforced" (random) drop
+  };
 
-  /**
-   * \brief Set the operating mode of this queue.
-   *
-   * \param mode The operating mode of this queue.
-   */
-  void SetMode (Queue::QueueMode mode);
-
-  /**
-   * \brief Get the encapsulation mode of this queue.
-   *
-   * \returns The encapsulation mode of this queue.
-   */
-  Queue::QueueMode GetMode (void);
+  static constexpr const char* UNFORCED_DROP = "Unforced drop";  //!< Early probability drops
+  static constexpr const char* FORCED_DROP = "Forced drop";      
+  
 
   /**
    * \brief Get the current value of the queue in bytes or packets.
@@ -86,24 +74,14 @@ public:
    */
   uint32_t GetQueueSize (void);
 
-  /**
-   * \brief Set the limit of the queue in bytes or packets.
-   *
-   * \param lim The limit in bytes or packets.
-   */
-  void SetQueueLimit (uint32_t lim);
+  
 
   /**
    * \brief Get queue delay
    */
   Time GetQueueDelay (void);
 
-  /**
-   * \brief Get BLUE statistics after running.
-   *
-   * \returns The drop statistics.
-   */
-  Stats GetStats ();
+
 
   /**
    * Assign a fixed random variable stream number to the random variables
@@ -128,7 +106,7 @@ protected:
 
   virtual bool DoEnqueue (Ptr<QueueDiscItem> item);
   virtual Ptr<QueueDiscItem> DoDequeue (void);
-  virtual Ptr<const QueueDiscItem> DoPeek (void) const;
+  virtual Ptr<const QueueDiscItem> DoPeek (void) ;
   virtual bool CheckConfig (void);
 
   /**
@@ -148,9 +126,7 @@ protected:
   virtual bool DropEarly (void);
 
 private:
-  Queue::QueueMode m_mode;                      //!< Mode (bytes or packets)
   uint32_t m_queueLimit;                        //!< Queue limit in bytes / packets
-  Stats m_stats;                                //!< BLUE statistics
   Ptr<UniformRandomVariable> m_uv;              //!< Rng stream
 
   // ** Variables supplied by user
