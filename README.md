@@ -11,7 +11,7 @@ Aligning BLUE implementation with ns3-dev
 * src/traffic-module/model/blue-queue-disc.cc and blue-queue-disc.h in that folder <br>
 * src/traffic-module/tests/blue-implementation.cc
 <li> Add corresponding wscripts in their respective directories as ns3.29 does not have BLUE in-built
-<li> Run these commands to check whether it is building and running properly.
- * ./waf configure<br>
- * ./waf --enable-examples --enable-tests<br>
+<li> Run these commands to check whether it is building and running properly. <br>
+ * ./waf configure <br>
+ * ./waf --enable-examples --enable-tests <br>
  * ./waf build<br>
