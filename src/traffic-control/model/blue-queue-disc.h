@@ -55,33 +55,66 @@ public:
    * \brief BlueQueueDisc Destructor
    */
   virtual ~BlueQueueDisc ();
-  
-    enum
-  {
-    DTYPE_NONE,        //!< Ok, no drop
-    DTYPE_FORCED,      //!< A "forced" drop
-    DTYPE_UNFORCED,    //!< An "unforced" (random) drop
-  };
 
-  static constexpr const char* UNFORCED_DROP = "Unforced drop";  //!< Early probability drops
-  static constexpr const char* FORCED_DROP = "Forced drop";      
-  
+  /**
+   * \brief Stats
+   */
+  /*typedef struct
+  {
+    uint32_t unforcedDrop;      //!< Early probability drops: proactive
+    uint32_t forcedDrop;        //!< Drops due to queue limit: reactive
+  } Stats;*/
+
+  /**
+   * \brief Set the operating mode of this queue.
+   *
+   * \param mode The operating mode of this queue.
+   */
+ // void SetMode (Queue::QueueMode mode);
+
+  /**
+   * \brief Get the encapsulation mode of this queue.
+   *
+   * \returns The encapsulation mode of this queue.
+   */
+ // Queue::QueueMode GetMode (void);
 
   /**
    * \brief Get the current value of the queue in bytes or packets.
    *
    * \returns The queue size in bytes or packets.
    */
-  uint32_t GetQueueSize (void);
+  //uint32_t GetQueueSize (void);
 
-  
+  /**
+   * \brief Set the limit of the queue in bytes or packets.
+   *
+   * \param lim The limit in bytes or packets.
+   */
+     enum
+  {
+    DTYPE_NONE,        //!< Ok, no drop
+    DTYPE_FORCED,      //!< A "forced" drop
+    DTYPE_UNFORCED,    //!< An "unforced" (random) drop
+  };
+      static constexpr const char* UNFORCED_DROP = "Unforced drop";  //!< Early probability drops
+  static constexpr const char* FORCED_DROP = "Forced drop";      //!< Forced drops, m_qAvg > m_maxTh
+  // Reasons for marking packets
+  static constexpr const char* UNFORCED_MARK = "Unforced mark";  //!< Early probability marks
+  static constexpr const char* FORCED_MARK = "Forced mark";      //!< Forced marks, m_qAvg > m_maxTh
+  void SetQueueLimit (uint32_t lim);
 
   /**
    * \brief Get queue delay
    */
   Time GetQueueDelay (void);
 
-
+  /**
+   * \brief Get BLUE statistics after running.
+   *
+   * \returns The drop statistics.
+   */
+  
 
   /**
    * Assign a fixed random variable stream number to the random variables
@@ -106,7 +139,7 @@ protected:
 
   virtual bool DoEnqueue (Ptr<QueueDiscItem> item);
   virtual Ptr<QueueDiscItem> DoDequeue (void);
-  virtual Ptr<const QueueDiscItem> DoPeek (void) ;
+  virtual Ptr<const QueueDiscItem> DoPeek (void) const;
   virtual bool CheckConfig (void);
 
   /**
@@ -126,7 +159,9 @@ protected:
   virtual bool DropEarly (void);
 
 private:
-  uint32_t m_queueLimit;                        //!< Queue limit in bytes / packets
+  //Queue::QueueMode m_mode;                      //!< Mode (bytes or packets)
+  //uint32_t m_queueLimit;                        //!< Queue limit in bytes / packets
+ // Stats m_stats;                                //!< BLUE statistics
   Ptr<UniformRandomVariable> m_uv;              //!< Rng stream
 
   // ** Variables supplied by user

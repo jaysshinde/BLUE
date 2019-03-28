@@ -41,19 +41,17 @@ TypeId BlueQueueDisc::GetTypeId (void)
     .SetParent<QueueDisc> ()
     .SetGroupName ("TrafficControl")
     .AddConstructor<BlueQueueDisc> ()
-        
-    .AddAttribute ("MaxSize",
-                   "The maximum number of packets accepted by this queue disc",
-                   QueueSizeValue (QueueSize ("25p")),
-                   MakeQueueSizeAccessor (&QueueDisc::SetMaxSize,
-                                          &QueueDisc::GetMaxSize),
-                   MakeQueueSizeChecker ())
-
     .AddAttribute ("PMark",
                    "Marking Probabilty",
                    DoubleValue (0),
                    MakeDoubleAccessor (&BlueQueueDisc::m_Pmark),
                    MakeDoubleChecker<double> ())
+     .AddAttribute ("MaxSize",
+                   "The maximum number of packets accepted by this queue disc",
+                   QueueSizeValue (QueueSize ("25p")),
+                   MakeQueueSizeAccessor (&QueueDisc::SetMaxSize,
+                                          &QueueDisc::GetMaxSize),
+                   MakeQueueSizeChecker ())
     .AddAttribute ("MeanPktSize",
                    "Average of packet size",
                    UintegerValue (1000),
@@ -80,7 +78,7 @@ TypeId BlueQueueDisc::GetTypeId (void)
 }
 
 BlueQueueDisc::BlueQueueDisc () :
-  QueueDisc (QueueDiscSizePolicy::SINGLE_INTERNAL_QUEUE)
+  QueueDisc ()
 {
   NS_LOG_FUNCTION (this);
   m_uv = CreateObject<UniformRandomVariable> ();
@@ -101,23 +99,11 @@ BlueQueueDisc::DoDispose (void)
 
 
 
-uint32_t
-BlueQueueDisc::GetQueueSize (void)
-{
-  NS_LOG_FUNCTION (this);
-  if (GetMaxSize ().GetUnit () == QueueSizeUnit::BYTES)
-    {
-      return GetInternalQueue (0)->GetNBytes ();
-    }
-  else if (GetMaxSize ().GetUnit () == QueueSizeUnit::PACKETS)
-    {
-      return GetInternalQueue (0)->GetNPackets ();
-    }
-  else
-    {
-      NS_ABORT_MSG ("Unknown Blue mode.");
-    }
-}
+
+
+
+
+
 
 
 int64_t
@@ -133,7 +119,7 @@ BlueQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
 {
   NS_LOG_FUNCTION (this << item);
 
-  uint32_t nQueued = GetQueueSize ();
+  uint32_t nQueued = GetInternalQueue (0)->GetCurrentSize ().GetValue ();
 
   if (m_isIdle)
     {
@@ -141,8 +127,8 @@ BlueQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
       m_isIdle = false; // not idle anymore
     }
 
-  if ((GetMaxSize ().GetUnit () == QueueSizeUnit::PACKETS && nQueued >= m_queueLimit)
-      || (GetMaxSize ().GetUnit () == QueueSizeUnit::BYTES && nQueued + item->GetSize () > m_queueLimit))
+  if (nQueued >= item->GetSize ())
+      
     {
       // Increment the Pmark
       IncrementPmark ();
@@ -156,7 +142,8 @@ BlueQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
       // Early probability drop: proactive
      DropBeforeEnqueue (item, UNFORCED_DROP);
       return false;
-}
+    }
+
   // No drop
   bool isEnqueued = GetInternalQueue (0)->Enqueue (item);
 
@@ -171,6 +158,8 @@ BlueQueueDisc::InitializeParams (void)
 {
   m_lastUpdateTime = Time (Seconds (0.0));
   m_idleStartTime = Time (Seconds (0.0));
+ /* m_stats.forcedDrop = 0;
+  m_stats.unforcedDrop = 0;*/
   m_isIdle = true;
 }
 
@@ -252,7 +241,7 @@ BlueQueueDisc::DoDequeue (void)
 }
 
 Ptr<const QueueDiscItem>
-BlueQueueDisc::DoPeek (void)
+BlueQueueDisc::DoPeek () const
 {
   NS_LOG_FUNCTION (this);
   if (GetInternalQueue (0)->IsEmpty ())
@@ -285,12 +274,11 @@ BlueQueueDisc::CheckConfig (void)
       return false;
     }
 
-   if (GetNInternalQueues () == 0)
+  if (GetNInternalQueues () == 0)
     {
-       // add a DropTail queue
-      AddInternalQueue (CreateObjectWithAttributes<DropTailQueue<QueueDiscItem> >
-      ("MaxSize", QueueSizeValue (GetMaxSize ()))); 
-    
+      // create a DropTail queue
+     AddInternalQueue (CreateObjectWithAttributes<DropTailQueue<QueueDiscItem> >
+                          ("MaxSize", QueueSizeValue (GetMaxSize ())));
     }
 
   if (GetNInternalQueues () != 1)
@@ -299,24 +287,18 @@ BlueQueueDisc::CheckConfig (void)
       return false;
     }
 
-  if (GetInternalQueue (0)->GetMaxSize ().GetUnit () != QueueSizeUnit::PACKETS)
+  /*if (GetInternalQueue (0)->GetMode () != m_mode)
     {
       NS_LOG_ERROR ("The mode of the provided queue does not match the mode set on the BlueQueueDisc");
       return false;
     }
 
-  if (GetInternalQueue (0)->GetMaxSize ().GetUnit () != QueueSizeUnit::BYTES)
-    {
-      NS_LOG_ERROR ("The mode of the provided queue does not match the mode set on the BlueQueueDisc");
-      return false;
-    }
-
-  if ((GetInternalQueue (0)->GetMaxSize ().GetUnit () == QueueSizeUnit::PACKETS && GetQueueSize () < m_queueLimit)
-      || (GetInternalQueue (0)->GetMaxSize ().GetUnit () ==  QueueSizeUnit::BYTES && GetQueueSize ()< m_queueLimit))
+  if ((m_mode ==  Queue::QUEUE_MODE_PACKETS && GetInternalQueue (0)->GetMaxPackets () < m_queueLimit)
+      || (m_mode ==  Queue::QUEUE_MODE_BYTES && GetInternalQueue (0)->GetMaxBytes () < m_queueLimit))
     {
       NS_LOG_ERROR ("The size of the internal queue is less than the queue disc limit");
       return false;
-    }
+    }*/
 
   return true;
 }

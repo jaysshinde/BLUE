@@ -70,18 +70,23 @@ int main (int argc, char *argv[])
   Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue (appDataRate));
 
   //Config::SetDefault ("ns3::Queue::Mode", StringValue ("QUEUE_MODE_PACKETS"));
-  Config::SetDefault ("ns3::QueueBase::MaxSize", StringValue (std::to_string (maxPackets) + "p"));
-  //Config::SetDefault ("ns3::Queue::MaxPackets", UintegerValue (maxPackets));
+    Config::SetDefault ("ns3::QueueBase::MaxSize", StringValue (std::to_string (maxPackets) + "p"));
 
   if (!modeBytes)
     {
-      Config::SetDefault ("ns3::RedQueueDisc::MaxSize",
-                          QueueSizeValue (QueueSize (QueueSizeUnit::PACKETS, queueDiscLimitPackets)));
+      Config::SetDefault ("ns3::RedQueueDisc::MaxSize",QueueSizeValue (QueueSize (QueueSizeUnit::PACKETS, queueDiscLimitPackets)));
+        Config::SetDefault ("ns3::BlueQueueDisc::MaxSize",QueueSizeValue (QueueSize (QueueSizeUnit::PACKETS, queueDiscLimitPackets)));
+      /*Config::SetDefault ("ns3::BlueQueueDisc::QueueLimit", UintegerValue (queueDiscLimitPackets));
+      Config::SetDefault ("ns3::RedQueueDisc::Mode", StringValue ("QUEUE_MODE_PACKETS"));
+      Config::SetDefault ("ns3::RedQueueDisc::QueueLimit", UintegerValue (queueDiscLimitPackets));*/
     }
   else
     {
-      Config::SetDefault ("ns3::RedQueueDisc::MaxSize",
-                          QueueSizeValue (QueueSize (QueueSizeUnit::BYTES, queueDiscLimitPackets * pktSize)));
+      Config::SetDefault ("ns3::RedQueueDisc::MaxSize",QueueSizeValue (QueueSize (QueueSizeUnit::BYTES, queueDiscLimitPackets)));
+      Config::SetDefault ("ns3::BlueQueueDisc::MaxSize",QueueSizeValue (QueueSize (QueueSizeUnit::BYTES, queueDiscLimitPackets)));
+     /* Config::SetDefault ("ns3::BlueQueueDisc::QueueLimit", UintegerValue (queueDiscLimitPackets * pktSize));
+      Config::SetDefault ("ns3::RedQueueDisc::Mode", StringValue ("QUEUE_MODE_BYTES"));
+      Config::SetDefault ("ns3::RedQueueDisc::QueueLimit", UintegerValue (queueDiscLimitPackets * pktSize));*/
       minTh *= pktSize;
       maxTh *= pktSize;
     }
@@ -180,7 +185,7 @@ int main (int argc, char *argv[])
 
   if (queueDiscType == "RED")
     {
-      RedQueueDisc::Stats st = StaticCast<RedQueueDisc> (queueDiscs.Get (0))->GetStats ();
+      QueueDisc::Stats st = queueDiscs.Get (0)->GetStats ();
       if (st.GetNDroppedPackets (RedQueueDisc::UNFORCED_DROP) == 0)
         {
           std::cout << "There should be some unforced drops" << std::endl;
@@ -192,20 +197,20 @@ int main (int argc, char *argv[])
           std::cout << "There should be zero drops due to queue full" << std::endl;
           exit (1);
         }
-      std::cout << "\t " << st.GetNDroppedPackets (RedQueueDisc::UNFORCED_DROP)<< " drops due to prob mark" << std::endl;
+      std::cout << "\t " << st.GetNDroppedPackets (RedQueueDisc::UNFORCED_DROP) << " drops due to prob mark" << std::endl;
       std::cout << "\t " << st.GetNDroppedPackets (RedQueueDisc::FORCED_DROP) << " drops due to hard mark" << std::endl;
-      std::cout << "\t " << st.GetNDroppedPackets (QueueDisc::INTERNAL_QUEUE_DROP)<< " drops due to queue full" << std::endl;
+      std::cout << "\t " << st.GetNDroppedPackets (QueueDisc::INTERNAL_QUEUE_DROP) << " drops due to queue full" << std::endl;
     }
   else
     {
       BlueQueueDisc::Stats st = StaticCast<BlueQueueDisc> (queueDiscs.Get (0))->GetStats ();
-      if ((st.GetNDroppedPackets (BlueQueueDisc::UNFORCED_DROP) == 0)|| (st.GetNDroppedPackets (BlueQueueDisc::FORCED_DROP) == 0))
+      if (st.GetNDroppedPackets (BlueQueueDisc::UNFORCED_DROP) == 0 || st.GetNDroppedPackets (BlueQueueDisc::FORCED_DROP) == 0)
         {
-          std::cout << "There should be some forced and unforced drops" << std::endl;
+          std::cout << "There should be some unforced and forced drops" << std::endl;
           exit (1);
         }
-      std::cout << "\t " <<st.GetNDroppedPackets (BlueQueueDisc::UNFORCED_DROP)<< " drops due to prob mark" << std::endl;
-      std::cout << "\t " <<st.GetNDroppedPackets (BlueQueueDisc::FORCED_DROP) << " drops due to queue limit" << std::endl;
+      std::cout << "\t " << st.GetNDroppedPackets (BlueQueueDisc::UNFORCED_DROP)<< " drops due to prob mark" << std::endl;
+      std::cout << "\t " << st.GetNDroppedPackets (BlueQueueDisc::FORCED_DROP) << " drops due to queue limit" << std::endl;
     }
 
   std::cout << "Destroying the simulation" << std::endl;
