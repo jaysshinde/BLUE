@@ -86,3 +86,12 @@ BLUE Was implemented intially in ns-3.25
           ./test.py -suit blue-queue-disc
 ```
 
+### References
+
+[1] Feng, W. C., Kandlur, D., Saha, D., & Shin, K. (1999). BLUE: A new class of active queue management algorithms. Ann Arbor, 1001, 48105.
+
+[2] Floyd, S., & Jacobson, V. (1993). Random early detection gateways for congestion avoidance. IEEE/ACM Transactions on networking, 1(4), 397-413.
+
+[3] http://www.isi.edu/nsnam/ns/
+
+[4] http://www.nsnam.org/
