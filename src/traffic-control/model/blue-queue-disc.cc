@@ -97,15 +97,6 @@ BlueQueueDisc::DoDispose (void)
   QueueDisc::DoDispose ();
 }
 
-
-
-
-
-
-
-
-
-
 int64_t
 BlueQueueDisc::AssignStreams (int64_t stream)
 {
@@ -119,16 +110,13 @@ BlueQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
 {
   NS_LOG_FUNCTION (this << item);
 
- // uint32_t nQueued = GetInternalQueue (0)->GetCurrentSize ().GetValue ();
-
   if (m_isIdle)
     {
       DecrementPmark ();
       m_isIdle = false; // not idle anymore
     }
 
-  if (GetCurrentSize () >= GetMaxSize ())
-      
+  if (GetCurrentSize().GetValue() >= GetMaxSize().GetValue()) 
     {
       // Increment the Pmark
       IncrementPmark ();
@@ -158,8 +146,6 @@ BlueQueueDisc::InitializeParams (void)
 {
   m_lastUpdateTime = Time (Seconds (0.0));
   m_idleStartTime = Time (Seconds (0.0));
- /* m_stats.forcedDrop = 0;
-  m_stats.unforcedDrop = 0;*/
   m_isIdle = true;
 }
 
@@ -287,18 +273,6 @@ BlueQueueDisc::CheckConfig (void)
       return false;
     }
 
-  /*if (GetInternalQueue (0)->GetMode () != m_mode)
-    {
-      NS_LOG_ERROR ("The mode of the provided queue does not match the mode set on the BlueQueueDisc");
-      return false;
-    }
-
-  if ((m_mode ==  Queue::QUEUE_MODE_PACKETS && GetInternalQueue (0)->GetMaxPackets () < m_queueLimit)
-      || (m_mode ==  Queue::QUEUE_MODE_BYTES && GetInternalQueue (0)->GetMaxBytes () < m_queueLimit))
-    {
-      NS_LOG_ERROR ("The size of the internal queue is less than the queue disc limit");
-      return false;
-    }*/
 
   return true;
 }

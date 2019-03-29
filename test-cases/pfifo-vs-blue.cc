@@ -67,20 +67,21 @@ int main (int argc, char *argv[])
   Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue (pktSize));
   Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue (appDataRate));
 
-  Config::SetDefault ("ns3::Queue::Mode", StringValue ("QUEUE_MODE_PACKETS"));
-  Config::SetDefault ("ns3::Queue::MaxPackets", UintegerValue (maxPackets));
+  Config::SetDefault ("ns3::QueueBase::MaxSize",QueueSizeValue (QueueSize (QueueSizeUnit::PACKETS, maxPackets)));
 
   if (!modeBytes)
   {
-    Config::SetDefault ("ns3::BlueQueueDisc::Mode", StringValue ("QUEUE_MODE_PACKETS"));
-    Config::SetDefault ("ns3::BlueQueueDisc::QueueLimit", UintegerValue (queueDiscLimitPackets));
-    Config::SetDefault ("ns3::PfifoFastQueueDisc::Limit", UintegerValue (queueDiscLimitPackets));
+    Config::SetDefault ("ns3::BlueQueueDisc::MaxSize",
+                        QueueSizeValue (QueueSize (QueueSizeUnit::PACKETS, queueDiscLimitPackets)));
+    Config::SetDefault ("ns3::PfifoFastQueueDisc::MaxSize",
+                        QueueSizeValue (QueueSize (QueueSizeUnit::PACKETS, queueDiscLimitPackets)));
   }
   else 
   {
-    Config::SetDefault ("ns3::BlueQueueDisc::Mode", StringValue ("QUEUE_MODE_BYTES"));
-    Config::SetDefault ("ns3::BlueQueueDisc::QueueLimit", UintegerValue (queueDiscLimitPackets * pktSize));
+    Config::SetDefault ("ns3::BlueQueueDisc::MaxSize",
+                        QueueSizeValue (QueueSize (QueueSizeUnit::BYTES, queueDiscLimitPackets * pktSize)));
   }
+
 
   Config::SetDefault ("ns3::BlueQueueDisc::PMark", DoubleValue (0.0));
   Config::SetDefault ("ns3::BlueQueueDisc::Increment", DoubleValue (0.0025));
@@ -161,7 +162,7 @@ int main (int argc, char *argv[])
   std::cout << "Running the simulation" << std::endl;
   Simulator::Run ();
 
-  uint32_t totalRxBytesCounter = 0;
+  uint64_t totalRxBytesCounter = 0;
   for (uint32_t i = 0; i < sinkApps.GetN (); i++)
     {
       Ptr <Application> app = sinkApps.Get (i);
