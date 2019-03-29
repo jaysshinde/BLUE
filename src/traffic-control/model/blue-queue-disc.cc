@@ -119,7 +119,7 @@ BlueQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
 {
   NS_LOG_FUNCTION (this << item);
 
-  uint32_t nQueued = GetInternalQueue (0)->GetCurrentSize ().GetValue ();
+ // uint32_t nQueued = GetInternalQueue (0)->GetCurrentSize ().GetValue ();
 
   if (m_isIdle)
     {
@@ -127,7 +127,7 @@ BlueQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
       m_isIdle = false; // not idle anymore
     }
 
-  if (nQueued >= item->GetSize ())
+  if (GetCurrentSize () >= GetMaxSize ())
       
     {
       // Increment the Pmark
