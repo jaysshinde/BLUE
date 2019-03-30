@@ -22,7 +22,7 @@
 
 #include "ns3/test.h"
 #include "ns3/blue-queue-disc.h"
-#include "ns3/drop-tail-queue.h"
+#include "ns3/packet.h"
 #include "ns3/uinteger.h"
 #include "ns3/string.h"
 #include "ns3/double.h"
@@ -34,18 +34,20 @@ using namespace ns3;
 class BlueQueueDiscTestItem : public QueueDiscItem
 {
 public:
-  BlueQueueDiscTestItem (Ptr<Packet> p, const Address & addr, uint16_t protocol);
+  BlueQueueDiscTestItem (Ptr<Packet> p, const Address & addr,bool ecnCapable);
   virtual ~BlueQueueDiscTestItem ();
   virtual void AddHeader (void);
+ virtual bool Mark(void);
 
 private:
   BlueQueueDiscTestItem ();
   BlueQueueDiscTestItem (const BlueQueueDiscTestItem &);
   BlueQueueDiscTestItem &operator = (const BlueQueueDiscTestItem &);
+  bool m_ecnCapablePacket;
 };
 
-BlueQueueDiscTestItem::BlueQueueDiscTestItem (Ptr<Packet> p, const Address & addr, uint16_t protocol)
-  : QueueDiscItem (p, addr, protocol)
+BlueQueueDiscTestItem::BlueQueueDiscTestItem (Ptr<Packet> p, const Address & addr,bool ecnCapable)
+  : QueueDiscItem (p, addr, 0),m_ecnCapablePacket (ecnCapable)
 {
 }
 
@@ -57,16 +59,24 @@ void
 BlueQueueDiscTestItem::AddHeader (void)
 {
 }
-
+bool
+BlueQueueDiscTestItem::Mark (void)
+{
+  if (m_ecnCapablePacket)
+    {
+      return true;
+    }
+  return false;
+}
 class BlueQueueDiscTestCase : public TestCase
 {
 public:
   BlueQueueDiscTestCase ();
   virtual void DoRun (void);
 private:
-  void Enqueue (Ptr<BlueQueueDisc> queue, uint32_t size, uint32_t nPkt);
-  void EnqueueWithDelay (Ptr<BlueQueueDisc> queue, uint32_t size, uint32_t nPkt);
-  void RunBlueTest (StringValue mode);
+  void Enqueue (Ptr<BlueQueueDisc> queue, uint32_t size, uint32_t nPkt,bool ecnCapable);
+  void EnqueueWithDelay (Ptr<BlueQueueDisc> queue, uint32_t size, uint32_t nPkt,bool ecnCapable);
+  void RunBlueTest (QueueSizeUnit mode);
 };
 
 BlueQueueDiscTestCase::BlueQueueDiscTestCase ()
@@ -75,27 +85,25 @@ BlueQueueDiscTestCase::BlueQueueDiscTestCase ()
 }
 
 void
-BlueQueueDiscTestCase::RunBlueTest (StringValue mode)
+BlueQueueDiscTestCase::RunBlueTest (QueueSizeUnit mode)
 {
   uint32_t pktSize = 0;
   // 1 for packets; pktSize for bytes
   uint32_t modeSize = 1;
-  uint32_t qLimit = 8;
+ uint32_t qSize = 8;
   Ptr<BlueQueueDisc> queue = CreateObject<BlueQueueDisc> ();
 
   // test 1: simple enqueue/dequeue with no drops
-  NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Mode", mode), true,
-                         "Verify that we can actually set the attribute Mode");
-  NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("QueueLimit", UintegerValue (qLimit)), true,
-                         "Verify that we can actually set the attribute QueueLimit");
-
+  
+   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("MaxSize", QueueSizeValue (QueueSize (mode, qSize))),
+                         true, "Verify that we can actually set the attribute MaxSize");
   Address dest;
 
-  if (queue->GetMode () == Queue::QUEUE_MODE_BYTES)
+  if (mode == QueueSizeUnit::BYTES)
     {
-      pktSize = 1000;
+      pktSize = 500;
       modeSize = pktSize;
-      queue->SetQueueLimit (qLimit * modeSize);
+        queue->SetMaxSize (QueueSize (mode, qSize * modeSize));
     }
 
   Ptr<Packet> p1, p2, p3, p4, p5, p6, p7, p8;
@@ -109,34 +117,34 @@ BlueQueueDiscTestCase::RunBlueTest (StringValue mode)
   p8 = Create<Packet> (pktSize);
 
   queue->Initialize ();
-  NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 0 * modeSize, "There should be no packets in there");
-  queue->Enqueue (Create<BlueQueueDiscTestItem> (p1, dest, 0));
-  NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 1 * modeSize, "There should be one packet in there");
-  queue->Enqueue (Create<BlueQueueDiscTestItem> (p2, dest, 0));
-  NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 2 * modeSize, "There should be two packets in there");
-  queue->Enqueue (Create<BlueQueueDiscTestItem> (p3, dest, 0));
-  queue->Enqueue (Create<BlueQueueDiscTestItem> (p4, dest, 0));
-  queue->Enqueue (Create<BlueQueueDiscTestItem> (p5, dest, 0));
-  queue->Enqueue (Create<BlueQueueDiscTestItem> (p6, dest, 0));
-  queue->Enqueue (Create<BlueQueueDiscTestItem> (p7, dest, 0));
-  queue->Enqueue (Create<BlueQueueDiscTestItem> (p8, dest, 0));
-  NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 8 * modeSize, "There should be eight packets in there");
+  NS_TEST_EXPECT_MSG_EQ (queue->GetCurrentSize ().GetValue (), 0 * modeSize, "There should be no packets in there");
+  queue->Enqueue (Create<BlueQueueDiscTestItem> (p1, dest,false));
+  NS_TEST_EXPECT_MSG_EQ (queue->GetCurrentSize ().GetValue (), 1 * modeSize, "There should be one packet in there");
+  queue->Enqueue (Create<BlueQueueDiscTestItem> (p2, dest,false));
+  NS_TEST_EXPECT_MSG_EQ (queue->GetCurrentSize ().GetValue (), 2 * modeSize, "There should be two packets in there");
+  queue->Enqueue (Create<BlueQueueDiscTestItem> (p3, dest,false));
+  queue->Enqueue (Create<BlueQueueDiscTestItem> (p4, dest,false));
+  queue->Enqueue (Create<BlueQueueDiscTestItem> (p5, dest,false));
+  queue->Enqueue (Create<BlueQueueDiscTestItem> (p6, dest,false));
+  queue->Enqueue (Create<BlueQueueDiscTestItem> (p7, dest,false));
+  queue->Enqueue (Create<BlueQueueDiscTestItem> (p8, dest,false));
+  NS_TEST_EXPECT_MSG_EQ (queue->GetCurrentSize ().GetValue (), 8 * modeSize, "There should be eight packets in there");
 
   Ptr<QueueDiscItem> item;
 
   item = queue->Dequeue ();
   NS_TEST_EXPECT_MSG_EQ ((item != 0), true, "I want to remove the first packet");
-  NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 7 * modeSize, "There should be seven packets in there");
+  NS_TEST_EXPECT_MSG_EQ (queue->GetCurrentSize ().GetValue (), 7 * modeSize, "There should be seven packets in there");
   NS_TEST_EXPECT_MSG_EQ (item->GetPacket ()->GetUid (), p1->GetUid (), "was this the first packet ?");
 
   item = queue->Dequeue ();
   NS_TEST_EXPECT_MSG_EQ ((item != 0), true, "I want to remove the second packet");
-  NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 6 * modeSize, "There should be six packet in there");
+  NS_TEST_EXPECT_MSG_EQ (queue->GetCurrentSize ().GetValue (), 6 * modeSize, "There should be six packet in there");
   NS_TEST_EXPECT_MSG_EQ (item->GetPacket ()->GetUid (), p2->GetUid (), "Was this the second packet ?");
 
   item = queue->Dequeue ();
   NS_TEST_EXPECT_MSG_EQ ((item != 0), true, "I want to remove the third packet");
-  NS_TEST_EXPECT_MSG_EQ (queue->GetQueueSize (), 5 * modeSize, "There should be five packets in there");
+  NS_TEST_EXPECT_MSG_EQ (queue->GetCurrentSize ().GetValue (), 5 * modeSize, "There should be five packets in there");
   NS_TEST_EXPECT_MSG_EQ (item->GetPacket ()->GetUid (), p3->GetUid (), "Was this the third packet ?");
 
   item = queue->Dequeue ();
@@ -162,11 +170,10 @@ BlueQueueDiscTestCase::RunBlueTest (StringValue mode)
   double Pmark = 0.2;
   double increment = 0.0025;
   double decrement = 0.00025;
-  qLimit = 300 * modeSize;
-  NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Mode", mode), true,
-                         "Verify that we can actually set the attribute Mode");
-  NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("QueueLimit", UintegerValue (qLimit)), true,
-                         "Verify that we can actually set the attribute QueueLimit");
+  qSize = 300 * modeSize;
+  
+  NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("MaxSize", QueueSizeValue (QueueSize (mode, qSize))),
+                         true, "Verify that we can actually set the attribute MaxSize");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("PMark", DoubleValue (Pmark)), true,
                          "Verify that we can actually set the attribute PMark");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Increment", DoubleValue (increment)), true,
@@ -176,20 +183,19 @@ BlueQueueDiscTestCase::RunBlueTest (StringValue mode)
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("FreezeTime", TimeValue (Seconds (0.1))), true,
                          "Verify that we can actually set the attribute FreezeTime");
   queue->Initialize ();
-  EnqueueWithDelay (queue, pktSize, 300);
+  EnqueueWithDelay (queue, pktSize, 300,false);
   Simulator::Run ();
-  BlueQueueDisc::Stats st = StaticCast<BlueQueueDisc> (queue)->GetStats ();
-  drop.test2 = st.unforcedDrop;
+   QueueDisc::Stats st = queue->GetStats ();
+  drop.test2 = st.GetNDroppedPackets (BlueQueueDisc::UNFORCED_DROP);
   NS_TEST_EXPECT_MSG_NE (drop.test2, 0, "There should be some unforced drops");
 
 
   // test 3: higher increment value for Pmark
   queue = CreateObject<BlueQueueDisc> ();
   increment = 0.25;
-  NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Mode", mode), true,
-                         "Verify that we can actually set the attribute Mode");
-  NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("QueueLimit", UintegerValue (qLimit)), true,
-                         "Verify that we can actually set the attribute QueueLimit");
+
+NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("MaxSize", QueueSizeValue (QueueSize (mode, qSize))),
+                         true, "Verify that we can actually set the attribute MaxSize");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("PMark", DoubleValue (Pmark)), true,
                          "Verify that we can actually set the attribute PMark");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Increment", DoubleValue (increment)), true,
@@ -199,19 +205,18 @@ BlueQueueDiscTestCase::RunBlueTest (StringValue mode)
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("FreezeTime", TimeValue (Seconds (0.1))), true,
                          "Verify that we can actually set the attribute FreezeTime");
   queue->Initialize ();
-  EnqueueWithDelay (queue, pktSize, 300);
+  EnqueueWithDelay (queue, pktSize, 300,false);
   Simulator::Run ();
-  st = StaticCast<BlueQueueDisc> (queue)->GetStats ();
-  drop.test3 = st.unforcedDrop;
+   st = queue->GetStats ();
+  drop.test3 = st.GetNDroppedPackets (BlueQueueDisc::UNFORCED_DROP);
   NS_TEST_EXPECT_MSG_GT (drop.test3, drop.test2, "Test 3 should have more unforced drops than Test 2");
 
 
   // test 4: lesser time interval for updating Pmark
   queue = CreateObject<BlueQueueDisc> ();
-  NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Mode", mode), true,
-                         "Verify that we can actually set the attribute Mode");
-  NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("QueueLimit", UintegerValue (qLimit)), true,
-                         "Verify that we can actually set the attribute QueueLimit");
+ 
+  NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("MaxSize", QueueSizeValue (QueueSize (mode, qSize))),
+                         true, "Verify that we can actually set the attribute MaxSize");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("PMark", DoubleValue (Pmark)), true,
                          "Verify that we can actually set the attribute PMark");
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("Increment", DoubleValue (increment)), true,
@@ -221,39 +226,39 @@ BlueQueueDiscTestCase::RunBlueTest (StringValue mode)
   NS_TEST_EXPECT_MSG_EQ (queue->SetAttributeFailSafe ("FreezeTime", TimeValue (Seconds (0.01))), true,
                          "Verify that we can actually set the attribute FreezeTime");
   queue->Initialize ();
-  EnqueueWithDelay (queue, pktSize, 300);
+  EnqueueWithDelay (queue, pktSize, 300,false);
   Simulator::Run ();
-  st = StaticCast<BlueQueueDisc> (queue)->GetStats ();
-  drop.test4 = st.unforcedDrop;
+  st = queue->GetStats ();
+  drop.test4 = st.GetNDroppedPackets (BlueQueueDisc::UNFORCED_DROP);
   NS_TEST_EXPECT_MSG_GT (drop.test4, drop.test3, "Test 4 should have more unforced drops than Test 3");
 }
 
 void
-BlueQueueDiscTestCase::Enqueue (Ptr<BlueQueueDisc> queue, uint32_t size, uint32_t nPkt)
+BlueQueueDiscTestCase::Enqueue (Ptr<BlueQueueDisc> queue, uint32_t size, uint32_t nPkt,bool ecnCapable)
 {
   Address dest;
   for (uint32_t i = 0; i < nPkt; i++)
     {
-      queue->Enqueue (Create<BlueQueueDiscTestItem> (Create<Packet> (size), dest, 0));
+      queue->Enqueue (Create<BlueQueueDiscTestItem> (Create<Packet> (size), dest,ecnCapable));
     }
 }
 
 void
-BlueQueueDiscTestCase::EnqueueWithDelay (Ptr<BlueQueueDisc> queue, uint32_t size, uint32_t nPkt)
+BlueQueueDiscTestCase::EnqueueWithDelay (Ptr<BlueQueueDisc> queue, uint32_t size, uint32_t nPkt,bool ecnCapable)
 {
   Address dest;
   double delay = 0.001;
   for (uint32_t i = 0; i < nPkt; i++)
     {
-      Simulator::Schedule (Time (Seconds ((i + 1) * delay)), &BlueQueueDiscTestCase::Enqueue, this, queue, size, 1);
+      Simulator::Schedule (Time (Seconds ((i + 1) * delay)), &BlueQueueDiscTestCase::Enqueue,this,queue, size, 1,false);
     }
 }
 
 void
 BlueQueueDiscTestCase::DoRun (void)
 {
-  RunBlueTest (StringValue ("QUEUE_MODE_PACKETS"));
-  RunBlueTest (StringValue ("QUEUE_MODE_BYTES"));
+  RunBlueTest (QueueSizeUnit::PACKETS);
+  RunBlueTest (QueueSizeUnit::BYTES);
   Simulator::Destroy ();
 }
 
