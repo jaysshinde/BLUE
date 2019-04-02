@@ -16,7 +16,23 @@
 * As an extension to BLUE, a novel technique based on Bloom filters is described for enforcing fairness among 
   a large number of flows. In particular, we propose and evaluate Stochastic Fair BLUE (SFB), a queue management
   algorithm which can identify and rate-limit nonresponsive flows using a very small amount of state information.
-
+  
+* Blue Algorithm Pseudocode  <br>
+ ```
+    Upon packet loss (or Qlen > l) event:
+        if ((now - last_update) > freze_time):
+            Pm = Pm + d1
+            last_update = now
+    Upon link idle event
+        if((now - last_update) > freeze_time):
+            Pm = Pm -d2
+            last_update = now
+    
+    
+    d1 & d2 are constants 
+    Pm = Probability of drop packet or mark 
+    freeze_time = minimum time inyerval between two successful updates of Pm
+```
 ### Model Description
   The source code for the BLUE model is located in the directory ``src/traffic-control/model``
   and consists of 2 files `blue-queue-disc.h` and `blue-queue-disc.cc` defining a BlueQueueDisc
