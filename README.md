@@ -1,4 +1,4 @@
-# BLUE Algorithm in ns-3.29
+# BLUE Algorithm in ns-Dev
 
 * The increasing packet loss rates caused by an exponential increase in network traffic 
   The IETF has been considering the deployment of active queue management techniques such as RED. 
